@@ -18,6 +18,9 @@ class Game:
         self.cards_per_player = cards_per_player
         self.deck = deck.copy()  # Work with a copy of the deck
         self.players = [Player(f"Player {i+1}") for i in range(num_players)]
+        self.defining_suit=None
+        self.rounds_to_win=0
+        self.player_to_beat=None
 
     def shuffle_and_deal(self):
         """Shuffle the deck and deal cards to each player."""
@@ -30,3 +33,20 @@ class Game:
         """Display each player's hand."""
         for player in self.players:
             print(player)
+
+    def determine_current_suit(self,card):
+        #whatever the card ends with is determined as the suit for that round
+        return card[-1]
+    
+    #determine suit of the whole game 
+
+    #to do: recurse the function over all players
+    def determine_bigger_suit(self,player=None,rounds=5):
+        for i in range (4):
+            Player.potential_suit(f'Player {i+1}')
+
+        player,rounds=Player.potential_suit
+
+        suit=input("What suit would you like?")
+        print(suit)
+        return suit

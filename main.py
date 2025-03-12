@@ -11,3 +11,9 @@ if __name__ == "__main__":
     for player in game.players:
         print(f"\nPossible cards for {player.name} when first suit is '{first_suit}':")
         print(player.possible_cards(first_suit))
+
+    print(game.determine_current_suit('8♥'))
+
+    player.potential_suit()
+
+    game.determine_bigger_suit()

@@ -24,6 +24,23 @@ class Player:
         if not allowed:
             allowed = self.hand.copy()
         return allowed
+    
+    #to do: fix the 4th player error
+    def potential_suit(self,current_suiter=None,current_number_of_rounds=5):
+        rounds=int(input(f"How many rounds are you willing to take on? Minimum is {current_number_of_rounds} please enter 0 if you want to pass"))
+        if rounds>current_number_of_rounds:
+            current_number_of_rounds=rounds
+            current_suiter=self.name
+        #fix condition
+        elif current_suiter is None and self.name=="Player 4":
+            current_number_of_rounds=5
+            current_suiter=self.name
+        
+        #updates globally the suiters and the current number_of_rounds
+        self.current_number_of_rounds = current_number_of_rounds
+        self.current_suiter = current_suiter
+        return current_suiter,current_number_of_rounds
 
+        
     def __str__(self):
         return f"{self.name}: {self.hand}"
