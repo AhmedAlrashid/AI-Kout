@@ -21,7 +21,4 @@ if __name__ == "__main__":
     game = Game()
     game.shuffle_and_deal()
     game.show_hands()
-    trump = game.determine_bigger_suit()
-    print("Trump suit is:", trump)
-    # Play one trick.
-    game.play_trick()
+    game.play_game()

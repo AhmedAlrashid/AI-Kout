@@ -14,17 +14,24 @@ class Player:
     def possible_cards(self, lead_suit):
         """
         Return the list of cards the player can legally play given the trick’s lead suit.
-        - If the player has any cards matching the lead suit (and not the Joker), those are the only legal plays.
-        - Otherwise, all cards (including Joker) are legal.
+        - The Joker is always allowed.
+        - Otherwise, if the player has any cards matching the lead suit, those are allowed.
+        (Now, even if the player has matching cards, the Joker is added if it exists.)
         """
+        # If no lead suit is defined, any card is allowed.
         if lead_suit is None:
-            # If no lead suit is defined, any card is allowed.
             return self.hand.copy()
-        allowed = [card for card in self.hand if card != "Joker" and card.endswith(lead_suit)]
-        if allowed:
-            return allowed
-        # If the player has no card in the lead suit, they may play any card.
-        return self.hand.copy()
+
+        # All cards that follow the lead suit.
+        allowed = [card for card in self.hand if card.endswith(lead_suit)]
+        # Always add Joker if the player has it.
+        if "Joker" in self.hand and "Joker" not in allowed:
+            allowed.append("Joker")
+        # If no cards match the lead suit, return the whole hand.
+        if not allowed:
+            return self.hand.copy()
+        return allowed
+
 
     def potential_suit(self, current_suiter=None, current_number_of_rounds=0):
         """

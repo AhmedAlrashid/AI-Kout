@@ -25,7 +25,7 @@ def beats(card1, card2, lead_suit, trump_suit):
     Rules:
       - The Joker always beats any other card.
       - If card2 is the Joker, nothing beats it.
-      - A trump card (e.g. hearts) beats any card that is not trump.
+      - A trump card beats any card that is not trump.
       - If both cards are trump, the one with the higher rank wins.
       - If neither card is trump, then if card1 follows the lead suit and card2 does not, card1 wins.
       - If both follow the lead suit, the card with the higher rank wins.
@@ -49,7 +49,6 @@ def beats(card1, card2, lead_suit, trump_suit):
         return RANK_VALUES.get(card1[:-1], 0) > RANK_VALUES.get(card2[:-1], 0)
     
     # Neither card is trump.
-    # If card1 follows lead suit and card2 doesn't, card1 wins.
     if suit1 == lead_suit and suit2 != lead_suit:
         return True
     if suit1 != lead_suit and suit2 == lead_suit:
@@ -57,7 +56,6 @@ def beats(card1, card2, lead_suit, trump_suit):
     if suit1 == lead_suit and suit2 == lead_suit:
         return RANK_VALUES.get(card1[:-1], 0) > RANK_VALUES.get(card2[:-1], 0)
     
-    # If neither card is trump or lead suit, then card1 does not beat card2.
     return False
 
 
@@ -67,9 +65,11 @@ class Game:
         self.cards_per_player = cards_per_player
         self.deck = deck.copy()  # Work with a copy of the deck.
         self.players = [Player(f"Player {i+1}") for i in range(num_players)]
-        self.defining_suit = None  # Overall trump (e.g., hearts).
-        self.rounds_to_win = 0
-        self.player_to_beat = None
+        self.defining_suit = None  # Overall trump suit.
+        self.suiter = None         # Winning bidder (used for determining first trick).
+        self.bid_value = 5         # The bid (target) that the bidding team must meet.
+        # Track team wins: team A: players 1 & 3, team B: players 2 & 4.
+        self.team_wins = {"A": 0, "B": 0}
 
     def shuffle_and_deal(self):
         """Shuffle the deck and deal cards to each player."""
@@ -88,7 +88,6 @@ class Game:
         Determine the suit for the trick based on the given card.
         (e.g., '7♦' -> '♦').
         """
-        # We assume the card is not the Joker for leading.
         return card[-1]
 
     def determine_bigger_suit(self):
@@ -107,32 +106,26 @@ class Game:
             suit = input(f"{current_suiter}, what suit would you like to define for the game? ")
             print(f"{current_suiter} has chosen {suit} as trump!")
             self.defining_suit = suit
-            self.suiter = current_suiter  # <-- Store the winning player's name.
+            self.suiter = current_suiter
+            self.bid_value = current_rounds  # The bid becomes the target.
             return suit
         else:
             print("No one made a valid bid. Defaulting trump suit to '♣'.")
             self.defining_suit = '♣'
+            self.suiter = None
             return '♣'
 
-
-    def play_trick(self):
+    def play_trick(self, starting_index):
         """
-        Play one trick (small round).
-        The player immediately to the right of the suiter starts the trick.
+        Play one trick (small round) starting from the provided player index.
+        The first player leads (cannot lead with Joker) and their card sets the lead suit.
+        Subsequent players must follow suit if possible.
+        Returns the index of the trick winner.
         """
         if self.defining_suit is None:
             print("Trump suit not set. Cannot play trick.")
-            return
+            return None
 
-        if not hasattr(self, "suiter"):
-            print("No suiter; cannot determine starting player. Aborting trick.")
-            return
-
-        # Find the index of the suiter.
-        suiter_index = next(i for i, p in enumerate(self.players) if p.name == self.suiter)
-        starting_index = (suiter_index + 1) % self.num_players
-
-        # First player leads; no lead suit is enforced.
         current_winner = None
         winning_card = None
         lead_suit = None
@@ -141,19 +134,18 @@ class Game:
         for i in range(self.num_players):
             player_index = (starting_index + i) % self.num_players
             player = self.players[player_index]
-            # For the lead player, allow any card.
+            # Lead player
             if i == 0:
                 print(f"{player.name}, it's your turn to lead.")
                 print("Your hand:", player.hand)
                 while True:
                     card = input("Choose a card to play: ")
                     if card in player.hand:
-                        # If the card is Joker, disallow as lead.
                         if card == "Joker":
                             print("Cannot lead with the Joker. Please choose another card.")
                         else:
                             player.hand.remove(card)
-                            current_winner = player
+                            current_winner = player_index
                             winning_card = card
                             lead_suit = self.determine_current_suit(card)
                             print(f"{player.name} leads with {card}. (Lead suit: {lead_suit})")
@@ -161,13 +153,11 @@ class Game:
                     else:
                         print("You don't have that card. Try again.")
             else:
-                # For subsequent players, enforce following the lead suit if possible.
                 legal_cards = player.possible_cards(lead_suit)
                 print(f"{player.name}, it's your turn. Your legal cards: {legal_cards}")
                 while True:
                     card = input("Choose a card to play: ")
                     if card in player.hand:
-                        # If the card is not in legal cards and legal cards is not the whole hand, disallow.
                         if card not in legal_cards and set(legal_cards) != set(player.hand):
                             print(f"You must follow suit ({lead_suit}) if possible. Try again.")
                         else:
@@ -175,20 +165,82 @@ class Game:
                             print(f"{player.name} plays {card}.")
                             # Determine if this card beats the current winning card.
                             if beats(card, winning_card, lead_suit, self.defining_suit):
-                                current_winner = player
+                                current_winner = player_index
                                 winning_card = card
                             break
                     else:
                         print("You don't have that card. Try again.")
-
-        print(f"\n{current_winner.name} wins the trick with {winning_card}!")
+        winner = self.players[current_winner]
+        print(f"\n{winner.name} wins the trick with {winning_card}!")
+        # Update team wins.
+        if winner.name in ["Player 1", "Player 3"]:
+            self.team_wins["A"] += 1
+        else:
+            self.team_wins["B"] += 1
+        for p in self.players:
+            print(f"{p.name} hand: {p.hand}")
         return current_winner
 
-# if __name__ == "__main__":
-#     game = Game()
-#     game.shuffle_and_deal()
-#     game.show_hands()
-#     trump = game.determine_bigger_suit()
-#     print("Trump suit is:", trump)
-#     # Play one trick.
-#     game.play_trick()
+    def play_game(self):
+        """
+        Play the full game.
+        - First, determine trump via bidding.
+        - Then play up to as many tricks as there are cards per player.
+        - The first trick is played starting with the player to the right of the suiter.
+        - Each subsequent trick is led by the winner of the previous trick.
+        - After each trick, check if the bidding team has reached their bid or if it is impossible for them to do so.
+        - At the end, if the bidding team wins at least as many tricks as their bid, they win the game;
+        otherwise, the opposing team wins.
+        """
+        trump = self.determine_bigger_suit()
+        print("Trump suit is:", trump)
+
+        # Determine the bidding team.
+        if self.suiter in ["Player 1", "Player 3"]:
+            bidding_team = "A"
+            other_team = "B"
+        else:
+            bidding_team = "B"
+            other_team = "A"
+
+        print(f"Bidding team is Team {bidding_team} with target {self.bid_value} tricks.")
+
+        total_rounds = self.cards_per_player
+
+        # Set starting index for the first trick.
+        if self.suiter is not None:
+            suiter_index = next(i for i, p in enumerate(self.players) if p.name == self.suiter)
+            starting_index = (suiter_index + 1) % self.num_players
+        else:
+            # If no one bid, arbitrarily start with Player 1.
+            starting_index = 0
+
+        # Play one trick per card in hand, with early termination check.
+        for trick in range(total_rounds):
+            print(f"\n--- Trick {trick+1} ---")
+            starting_index = self.play_trick(starting_index)
+            if starting_index is None:
+                break  # Abort if trick couldn't be played.
+
+            # Check early termination conditions.
+            remaining_rounds = total_rounds - (trick + 1)
+            current_bidding_wins = self.team_wins[bidding_team]
+            
+            # If the bidding team has already met their target.
+            if current_bidding_wins >= self.bid_value:
+                print("Bidding team has reached their bid target early. Ending game.")
+                break
+            # Or if it is impossible for the bidding team to reach their target.
+            elif current_bidding_wins + remaining_rounds < self.bid_value:
+                print("Bidding team can no longer reach their bid target. Ending game early.")
+                break
+
+        print("\n--- Game Over ---")
+        print("Team scores:", self.team_wins)
+        if self.team_wins[bidding_team] >= self.bid_value:
+            print(f"Team {bidding_team} (the bidding team) wins the game!")
+        else:
+            print(f"Team {other_team} wins the game!")
+
+
+
