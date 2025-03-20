@@ -9,3 +9,4 @@ Windows (Alt Codes)
     Spades (♠) → Alt + 6
 
 👉 Note: You must use the numeric keypad (not the number row) while holding down the Alt key.
+
